@@ -1,6 +1,6 @@
 # GPC Plotter Python Script
 
-The GPC Plotter is a Python script designed to plot and analyze gpc data from files with the extension `.arw`. It utilizes various Python libraries, including `matplotlib`, `scipy`, and `numpy`, to visualize and analyze the chromatography data. The script offers three main functionalities: plotting individual datas, plotting all datas together, and deconvoluting datas to identify individual peaks.
+The GPC Plotter is a Python script designed to plot and analyze gpc data from files with the extension `.arw`. The script offers three main functionalities: plotting individual data, plotting all data together, and deconvoluting data to identify individual peaks.
 
 ## Prerequisites
 
