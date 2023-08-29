@@ -8,12 +8,23 @@ import os
 import csv
 
 class GpcPlotter:
+    """
+    This a utility class to plot gpc data stored in .arw files
+    
+    Attributes:
+        show (boolean): display plot using matplotlib.pylot
+        save (boolean): save plot to png
+    """
     def __init__(self, show=True, save=False):
         self.path = os.getcwd()
         self.show = show
         self.save = save
 
     def plot_individuals(self, min_x=0, max_x=20, normalized=False):
+        """
+        This method plots each individual file in the folder ./data on its own plot
+        Plots are stored in ./plots
+        """
         for filename in os.listdir('data'):
             file_path = os.path.join('data', filename)
             if os.path.isfile(file_path) and 'arw' in file_path:
@@ -42,7 +53,11 @@ class GpcPlotter:
                 except Exception as e:
                     print(e)
 
-    def plot_all(self, normalized=False):
+    def plot_all(self, min_x=6, max_x=20, normalized=False):
+        """
+        This method plots each file in the folder ./data on the same plot
+        Plots are stored in ./plots
+        """
         fig, ax = plt.subplots()
 
         for filename in os.listdir('data'):
@@ -54,9 +69,7 @@ class GpcPlotter:
                     title = data[1].replace("\"", "").strip()
                     data = [list(map(float, line.strip().split('\t')))
                             for line in data[2:] if line]
-                    data = [line for line in data if line[0]
-                            >= 6 and line[0] <= 10]
-
+                    data = [line for line in data if line[0] >= min_x and line[0] <= max_x]
                     t = np.array([line[0] for line in data])
                     s = np.array([line[1] for line in data])
                     if normalized:
@@ -78,34 +91,81 @@ class GpcPlotter:
         if self.save:
             fig.savefig(f'{self.path}\\plots\\{fig_title}')
 
-    def plot_deconvoluted(self, filename, min_x=0, max_x=100):
-        fig, ax = plt.subplots()
-        file_path = f'{self.path}\\data\\{file_name}'
-        title = f'{file_name[:-4]} deconvoluted'
+    def plot_multi(self, min_x=6, max_x=20, normalized=False, files=None, fig_title=""):
+        """
+        This method plots each file from the list of filenames passed in on the same plot
+        files must be stored in ./data 
+        Plots are stored in ./plots
+        """
+        if files != None:
+            fig, ax = plt.subplots()
 
-        with open(file_path) as file:
-            data = [line for line in file]
+            for filename in files:
+                file_path = os.path.join('data', filename)
+                if os.path.isfile(file_path) and 'arw' in file_path:
+                    try:
+                        with open(file_path) as file:
+                            data = [line for line in file]
+                        title = data[1].replace("\"", "").strip()
+                        data = [list(map(float, line.strip().split('\t')))
+                                for line in data[2:] if line]
+                        data = [line for line in data if line[0] >= min_x and line[0] <= max_x]
+                        t = np.array([line[0] for line in data])
+                        s = np.array([line[1] for line in data])
+                        if normalized:
+                            s = (np.array(s) - np.min(s)) / (np.max(s) - np.min(s))
+                            title = f'{title} normalized'
+                        ax.plot(t, s, label=title)
+                    except Exception as e:
+                        print(e)
 
-        data = [list(map(float, line.strip().split('\t'))) for line in data[2:] if line]
-        data = [line for line in data if line[0] >= min_x and line[0] <= max_x]
+            ax.set(xlabel='time (min)')
+            ax.grid()
+            ax.legend()
+            if normalized:
+                fig_title = f'{fig_title}_normalized.png'
+            if self.show:
+                plt.show()
+            if self.save:
+                fig.savefig(f'{self.path}\\plots\\{fig_title}')
 
-        # plot original plot
-        t = np.array([line[0] for line in data])
-        s = np.array([line[1] for line in data])
-        ax.plot(t, s, label=title)
+    def plot_deconvoluted(self, files=None, min_x=0, max_x=100):
+        """
+        This method plots each file from the list of filenames passed in as
+        de-convoluted plot on its own plot
+        files must be stored in ./data 
+        Plots are stored in ./plots
+        """
+        if files != None:
+            for filename in files:
+                fig, ax = plt.subplots()
+                file_path = f'{self.path}\\data\\{file_name}'
+                title = f'{file_name[:-4]} de-convoluted'
 
-        # plot deconvoluted plot
-        self.plot_deconvolution(ax, s, t, min_x=min_x, max_x=max_x, min_h=5, title=title)
+                with open(file_path) as file:
+                    data = [line for line in file]
 
-        # show plot
-        ax.set(xlabel='time (min)')
-        ax.grid()
-        ax.legend()
-        if self.show:
-            plt.show()
-        if self.save:
-            fig.savefig(f'{self.path}\\plots\\{title}.png')
+                data = [list(map(float, line.strip().split('\t'))) for line in data[2:] if line]
+                data = [line for line in data if line[0] >= min_x and line[0] <= max_x]
 
+                # plot original plot
+                t = np.array([line[0] for line in data])
+                s = np.array([line[1] for line in data])
+                ax.plot(t, s, label=title)
+
+                # plot de-convoluted plot
+                self.plot_deconvolution(ax, s, t, min_x=min_x, max_x=max_x, min_h=5, title=title)
+
+                # show plot
+                ax.set(xlabel='time (min)')
+                ax.grid()
+                ax.legend()
+                if self.show:
+                    plt.show()
+                if self.save:
+                    fig.savefig(f'{self.path}\\plots\\{title}.png')
+
+############ de-convolution helper methods ############ 
     def plot_deconvolution(self, ax, s, t, min_x=0, max_x=100, min_h=0, data_len=1000, show_peak_info=True, title='', write_csv=False):
         fun = lambda x: np.exp(-(0.1*x-6)**2+4) + np.exp(-(0.1*x-4.75)**2+2)
         x_deconv = np.linspace(t[0], t[-1], data_len)
@@ -172,9 +232,12 @@ class GpcPlotter:
         mean = sum(data) / len(data)
         variance = sum([((x - mean) ** 2) for x in data]) / len(data)
         return (variance ** 0.5)
+############ end de-convolution helper methods ############ 
 
 if __name__ == '__main__':
-    plotter = GpcPlotter(show=True, save=False)
+    # example usage
+    
+    plotter = GpcPlotter(show=False, save=True)
     plotter.plot_individuals(normalized=False)
     plotter.plot_all(normalized=False)
     plotter.plot_individuals(normalized=True)
